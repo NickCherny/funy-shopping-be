@@ -1,5 +1,5 @@
 import { Product } from './Product.types';
-import { createRandomProduct } from '../../__mocks__/product.properties';
+import { createRandomProduct } from '../../../__mocks__/product.properties';
 
 const products = (new Array(10).fill(null).map(createRandomProduct));
 

@@ -2,6 +2,7 @@
   "extends": "./tsconfig.paths.json",
   "compilerOptions": {
     "lib": ["ESNext"],
+    "types": ["node", "jest"],
     "moduleResolution": "node",
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -16,7 +17,10 @@
     ".serverless/**/*",
     ".webpack/**/*",
     "_warmup/**/*",
-    ".vscode/**/*"
+    ".vscode/**/*",
+    "**/*.test.*",
+    "**/__mocks__/*",
+    "**/__tests__/*"
   ],
   "ts-node": {
     "require": ["tsconfig-paths/register"]
