@@ -1,1 +1,1 @@
-export { dynamoDBClient } from './client'
+export { dynamoDBClient } from './client';

@@ -1,7 +1,7 @@
-import { faker } from '@faker-js/faker';
-import ProductSchema from "../components/Product/Product.schema";
+import { faker } from "@faker-js/faker";
+import { Product } from "../src/components/Product/Product.types";
 
-export function createRandomProduct(): ProductSchema {
+export function createRandomProduct(): Product {
   return {
     id: faker.datatype.uuid(),
     title: faker.internet.userName(),
@@ -11,6 +11,6 @@ export function createRandomProduct(): ProductSchema {
     score: 0,
     isSoftDelete: false,
     createdAt: faker.date.past().toDateString(),
-    image: faker.image.cats()
+    image: faker.image.cats(),
   };
 }

@@ -10,5 +10,3 @@ export const dynamoDBClient = (): DocumentClient => {
   }
   return new AWS.DynamoDB.DocumentClient();
 };
-
-export default dynamoDBClient;
