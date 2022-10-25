@@ -5,3 +5,4 @@ export {
   removeProduct,
   updateProduct,
 } from './product';
+export { putProductToStock } from './stock';

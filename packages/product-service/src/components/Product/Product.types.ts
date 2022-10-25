@@ -1,11 +1,13 @@
 export type Product = {
-  createdAt: string;
-  description: string;
-  id: string;
-  image: string;
-  isSoftDelete: boolean;
-  labels: string[];
-  score: 0 | 1 | 2 | 3 | 4 | 5;
-  shortDescription: string;
+  productId: string;
   title: string;
+  description: string;
+  image: string;
+  price: number;
+  isDeleted: boolean;
+  createdAt: string;
+}
+
+export type WithAvailabilityInStocks<T> = T & {
+  count: number;
 }

@@ -5,14 +5,16 @@ import {
   removeProduct,
   createProduct,
   getProductById,
+  putProductToStock,
 } from "@functions/index";
+import dynamoDBTables from './resources/dynamodbTables';
 
 const serverlessConfiguration: AWS = {
   service: "product-service",
   frameworkVersion: "3",
   plugins: [
-    "serverless-esbuild",
     "serverless-offline",
+    "serverless-esbuild",
     "serverless-dynamodb-local",
   ],
   provider: {
@@ -55,6 +57,7 @@ const serverlessConfiguration: AWS = {
     removeProduct,
     createProduct,
     getProductById,
+    putProductToStock,
   },
   package: { individually: true },
   custom: {
@@ -70,7 +73,8 @@ const serverlessConfiguration: AWS = {
     },
     dynamodb: {
       start: {
-        port: 8050,
+        docker: true,
+        port: 8000,
         inMemory: true,
         migrate: true,
       },
@@ -79,29 +83,8 @@ const serverlessConfiguration: AWS = {
   },
   resources: {
     Resources: {
-      ProductTable: {
-        Type: "AWS::DynamoDB::Table",
-        Properties: {
-          TableName: "ProductTable",
-          AttributeDefinitions: [
-            {
-              AttributeName: "id",
-              AttributeType: "S",
-            },
-          ],
-          KeySchema: [
-            {
-              AttributeName: "id",
-              KeyType: "HASH",
-            },
-          ],
-          ProvisionedThroughput: {
-            ReadCapacityUnits: 1,
-            WriteCapacityUnits: 1,
-          },
-        },
-      },
-    },
+      ...dynamoDBTables,
+    }
   },
 };
 

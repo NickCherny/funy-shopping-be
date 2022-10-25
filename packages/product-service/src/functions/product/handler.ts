@@ -1,9 +1,9 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { formatJSONResponse } from '@libs/api-gateway';
 import { middyfy } from '@libs/lambda';
-// import { v4 } from "uuid";
+import { v4 } from "uuid";
 import productService from '../../components/Product'
-// import ProductSchema from "../../components/Product/Product.schema";
+import {Product} from "../../components/Product/Product.types";
 
 export const getProductList = middyfy(async (): Promise<APIGatewayProxyResult> => {
   const products = await productService.getProductList();
@@ -12,30 +12,30 @@ export const getProductList = middyfy(async (): Promise<APIGatewayProxyResult> =
   })
 })
 
-// export const createProduct = middyfy(async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-//   try {
-//     const id = v4();
-//     const product = await productService.createProduct({
-//       id,
-//       title: event.body.title,
-//       description: event.body.description,
-//       shortDescription: event.body.shortDescription,
-//       createdAt: new Date().toISOString(),
-//       isSoftDelete: false,
-//       labels: [],
-//       score: 1
-//     });
-//
-//     return formatJSONResponse({
-//       product
-//     });
-//   } catch (e) {
-//     return formatJSONResponse({
-//       status: 500,
-//       message: e
-//     });
-//   }
-// });
+export const createProduct = middyfy(async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  try {
+    const body = (event.body as unknown as Product);
+    const id = v4();
+    const product = await productService.createProduct({
+      productId: id,
+      title: body.title,
+      description: body.description,
+      createdAt: new Date().toISOString(),
+      isDeleted: false,
+      price: body.price,
+      image: body.image,
+    });
+
+    return formatJSONResponse({
+      product
+    });
+  } catch (e) {
+    return formatJSONResponse({
+      status: 500,
+      message: e
+    });
+  }
+});
 
 export const getProductById = middyfy(async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   const id = event.pathParameters.id;
