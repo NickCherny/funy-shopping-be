@@ -1,11 +1,10 @@
-import aws from 'aws-sdk';
+import * as AWS from 'aws-sdk';
 
 export default {
   setupAWS: () => {
-    aws.config.update(
+    AWS.config.update(
       process.env.NODE_ENV === 'test'
         ? {
-            endpoint: `http://localhost:${process.env.DYNAMO_TESTING_PORT}`,
             region: 'mock',
             credentials: {
               accessKeyId: 'accessKeyId',

@@ -1,33 +1,22 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { formatJSONResponse } from '@libs/api-gateway';
 import { middyfy } from '@libs/lambda';
-import { v4 } from "uuid";
-import productService from '../../components/Product'
-import {Product} from "../../components/Product/Product.types";
-
-export const getProductList = middyfy(async (): Promise<APIGatewayProxyResult> => {
-  const products = await productService.getProductList();
-  return formatJSONResponse ({
-    products
-  })
-})
+import { parseProductInput } from '@libs/validation';
+import productService from '@components/Product'
 
 export const createProduct = middyfy(async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
-    const body = (event.body as unknown as Product);
-    const id = v4();
-    const product = await productService.createProduct({
-      productId: id,
-      title: body.title,
-      description: body.description,
-      createdAt: new Date().toISOString(),
-      isDeleted: false,
-      price: body.price,
-      image: body.image,
-    });
-
+    const body = (event.body);
+    const data = parseProductInput(body);
+    if (data === undefined) {
+      return formatJSONResponse({
+        status: 400,
+        message: 'Invalid product input'
+      });
+    }
+    const productId = await productService.createProduct(data);
     return formatJSONResponse({
-      product
+      productId
     });
   } catch (e) {
     return formatJSONResponse({
@@ -37,12 +26,19 @@ export const createProduct = middyfy(async (event: APIGatewayProxyEvent): Promis
   }
 });
 
+export const getProductList = middyfy(async (): Promise<APIGatewayProxyResult> => {
+  const products = await productService.getProductList();
+  return formatJSONResponse ({
+    products
+  })
+})
+
 export const getProductById = middyfy(async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  const id = event.pathParameters.id;
+  const productId = event.pathParameters.productId;
   try {
-    const product = await productService.getProductById(id);
+    const product = await productService.getProductById(productId);
     return formatJSONResponse({
-      product, id
+      product, productId
     });
   } catch (error) {
     return formatJSONResponse({
@@ -52,32 +48,17 @@ export const getProductById = middyfy(async (event: APIGatewayProxyEvent): Promi
   }
 });
 
-// export const updateProduct = middyfy(async (event): Promise<APIGatewayProxyResult> => {
-//   const id = event.pathParameters.id;
-//   try {
-//     const todo = await productService.updateProduct(id, event.body as ProductSchema)
-//     return formatJSONResponse({
-//       todo, id
-//     });
-//   } catch (e) {
-//     return formatJSONResponse({
-//       status: 500,
-//       message: e
-//     });
-//   }
-// });
-//
-// export const removeProduct = middyfy(async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-//   const id = event.pathParameters.id;
-//   try {
-//     const product = await productService.removeProduct(id)
-//     return formatJSONResponse({
-//       product, id
-//     });
-//   } catch (e) {
-//     return formatJSONResponse({
-//       status: 500,
-//       message: e
-//     });
-//   }
-// })
+export const removeProduct = middyfy(async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  const id = event.pathParameters.id;
+  try {
+    const product = await productService.removeProduct(id)
+    return formatJSONResponse({
+      product, id
+    });
+  } catch (e) {
+    return formatJSONResponse({
+      status: 500,
+      message: e
+    });
+  }
+})

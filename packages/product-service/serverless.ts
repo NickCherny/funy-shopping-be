@@ -1,26 +1,28 @@
 import type { AWS } from "@serverless/typescript";
 import {
   getProductList,
-  updateProduct,
   removeProduct,
   createProduct,
   getProductById,
-  putProductToStock,
 } from "@functions/index";
-import dynamoDBTables from './resources/dynamodbTables';
+import DocumentationModels from '@models/documentation';
 
 const serverlessConfiguration: AWS = {
   service: "product-service",
   frameworkVersion: "3",
+  useDotenv: true,
   plugins: [
     "serverless-offline",
     "serverless-esbuild",
     "serverless-dynamodb-local",
+    "serverless-dotenv-plugin",
+    "serverless-stage-manager",
+    "serverless-openapi-documentation",
   ],
   provider: {
     name: "aws",
     runtime: "nodejs14.x",
-    profile: "nickadmin",
+    profile: "default",
     region: "eu-west-1",
     apiGateway: {
       minimumCompressionSize: 1024,
@@ -29,6 +31,8 @@ const serverlessConfiguration: AWS = {
     environment: {
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1",
       NODE_OPTIONS: "--enable-source-maps --stack-trace-limit=1000",
+      PRODUCTS_TABLE_NAME: '${env:PRODUCTS_TABLE_NAME}',
+      STOCKS_TABLE_NAME: '${env:STOCKS_TABLE_NAME}',
     },
     iam: {
       role: {
@@ -36,15 +40,26 @@ const serverlessConfiguration: AWS = {
           {
             Effect: "Allow",
             Action: [
-              "dynamodb:DescribeTable",
               "dynamodb:Query",
               "dynamodb:Scan",
               "dynamodb:GetItem",
               "dynamodb:PutItem",
               "dynamodb:UpdateItem",
-              "dynamodb:DeleteItem",
+              "dynamodb:DeleteItem"
             ],
-            Resource: "arn:aws:dynamodb:eu-west-1:*:table/product",
+            Resource: 'arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${env:PRODUCTS_TABLE_NAME}',
+          },
+          {
+            Effect: "Allow",
+            Action: [
+              "dynamodb:Query",
+              "dynamodb:Scan",
+              "dynamodb:GetItem",
+              "dynamodb:PutItem",
+              "dynamodb:UpdateItem",
+              "dynamodb:DeleteItem"
+            ],
+            Resource: 'arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${env:STOCKS_TABLE_NAME}',
           },
         ],
       },
@@ -53,14 +68,73 @@ const serverlessConfiguration: AWS = {
   // import the function via paths
   functions: {
     getProductList,
-    updateProduct,
     removeProduct,
     createProduct,
     getProductById,
-    putProductToStock,
   },
   package: { individually: true },
+  resources: {
+    Resources: {
+      ProductTable: {
+        Type: "AWS::DynamoDB::Table",
+        Properties: {
+          TableName: "ProductTable",
+          AttributeDefinitions: [
+            {
+              AttributeName: "productId",
+              AttributeType: "S",
+            },
+          ],
+          KeySchema: [
+            {
+              AttributeName: "productId",
+              KeyType: "HASH",
+            }
+          ],
+          ProvisionedThroughput: {
+            ReadCapacityUnits: 1,
+            WriteCapacityUnits: 1,
+          },
+        },
+      },
+      StockTable: {
+        Type: "AWS::DynamoDB::Table",
+        Properties: {
+          TableName: "StockTable",
+          AttributeDefinitions: [
+            {
+              AttributeName: "productId",
+              AttributeType: "S",
+            },
+            {
+              AttributeName: "count",
+              AttributeType: "N",
+            },
+          ],
+          KeySchema: [
+            {
+              AttributeName: "productId",
+              KeyType: "HASH",
+            },
+            {
+              AttributeName: "count",
+              KeyType: "RANGE",
+            },
+          ],
+          ProvisionedThroughput: {
+            ReadCapacityUnits: 1,
+            WriteCapacityUnits: 1,
+          },
+        },
+      },
+    }
+  },
   custom: {
+    stages: [
+      'dev',
+      'prod',
+      'stag'
+    ],
     esbuild: {
       bundle: true,
       minify: false,
@@ -78,13 +152,13 @@ const serverlessConfiguration: AWS = {
         inMemory: true,
         migrate: true,
       },
-      stages: "dev",
     },
-  },
-  resources: {
-    Resources: {
-      ...dynamoDBTables,
-    }
+    documentation: {
+      version: '1',
+      title: 'product-service',
+      description: 'Product service API',
+      models: DocumentationModels,
+    },
   },
 };
 

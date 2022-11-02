@@ -3,6 +3,4 @@ export {
   createProduct,
   getProductList,
   removeProduct,
-  updateProduct,
 } from './product';
-export { putProductToStock } from './stock';

@@ -1,12 +1,7 @@
-export type Stock = {
-    stockId: string;
-    productId: string;
-    price: number;
-    count: number;
-}
+import { Stock } from '@models/stock.schema';
 
 export interface StockServiceInterface {
-    getProductStocks(productId: string): Promise<Stock[]>;
-    putProductToStock(productId: string, amount: number): Promise<boolean>;
-    removeProductInStock(productId: string, amount: number): Promise<boolean>;
+    getProductCount(productId: string): Promise<Stock[]>;
+    addProductToStore(payload: Stock): Promise<boolean>;
+    removeProductFromStock(productId: string, amount: number): Promise<boolean>;
 }

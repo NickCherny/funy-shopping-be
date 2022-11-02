@@ -1,88 +1,68 @@
+import { v4 } from "uuid";
 import { DocumentClient } from "aws-sdk/clients/dynamodb";
-import { Product, WithAvailabilityInStocks } from './Product.types';
-import { StockServiceInterface } from '../Stock/Stock.types';
+import { ProductInput, ProductWithCount } from '@models/product.schema';
+import { StockServiceInterface } from '@components/Stock';
 
 export class ProductService {
-  private Tablename: string = 'ProductTable';
-  private docClient: DocumentClient;
+  private Tablename: string = process.env.PRODUCTS_TABLE_NAME;
+  private dynamoDbClient: DocumentClient;
   private stockService: StockServiceInterface;
 
   constructor(client: DocumentClient, stockService: StockServiceInterface) {
-    this.docClient = client;
+    this.dynamoDbClient = client;
     this.stockService = stockService;
   }
 
-  async getProductList(): Promise<WithAvailabilityInStocks<Product>[]> {
-    const products = (await this.docClient.scan({
+  async createProduct({ count, ...otherData }: ProductInput): Promise<string> {
+    const productId: string = v4();
+    await this.dynamoDbClient.put({
+      TableName: this.Tablename,
+      Item: {
+        ...otherData,
+        productId,
+      }
+    }).promise();
+    await this.stockService.addProductToStore({ productId, count });
+    return productId;
+  }
+
+  async getProductList(): Promise<ProductWithCount[]> {
+    const products = (await this.dynamoDbClient.scan({
       TableName: this.Tablename,
     }).promise());
     const result = await Promise.all(products.Items.map(async product => {
-      const stocks = await this.stockService.getProductStocks(product.productId);
+      const stocks = await this.stockService.getProductCount(product.productId);
       return {
         ...product,
         count: stocks.reduce((acc, { count }) => acc + count, 0),
       }
     }));
-    return result as WithAvailabilityInStocks<Product>[];
+    return result as ProductWithCount[];
   }
 
-  async createProduct(product: Product): Promise<Product> {
-    await this.docClient.put({
-      TableName: this.Tablename,
-      Item: product
-    }).promise()
-    return product as Product;
-  }
-
-  async getProductById(productId: string): Promise<WithAvailabilityInStocks<Product>> {
-    const product = await this.docClient.get({
+  async getProductById(productId: string): Promise<ProductWithCount> {
+    const product = await this.dynamoDbClient.get({
       TableName: this.Tablename,
       Key: { productId }
     }).promise()
     if (!product.Item) throw new Error("Id does not exit");
-    const stocks = await this.stockService.getProductStocks(product.Item.productId);
-    
+    const stocks = await this.stockService.getProductCount(product.Item.productId);
+
     return {
       ...product.Item,
       count: stocks.reduce((acc, { count }) => count + acc, 0)
-    } as WithAvailabilityInStocks<Product>;
+    } as ProductWithCount;
   }
 
-  async updateProduct(productId: string, data: Partial<Product>): Promise<Product> {
-    const updated = await this.docClient
-      .update({
-        TableName: this.Tablename,
-        Key: { productId },
-        UpdateExpression: "set price = :price",
-        ExpressionAttributeValues: {
-          ":price": data.price,
-        },
-        ReturnValues: "ALL_NEW",
-      })
-      .promise();
-    return updated.Attributes as Product;
-  }
-
-  async softDelete(productId: string): Promise<Boolean> {
-    const product = await this.docClient.update({
-      TableName: this.Tablename,
-      Key: { productId },
-      UpdateExpression: "set isDeleted = :value",
-      ExpressionAttributeValues: {
-        ':value': true
-      },
-      ReturnValues: "ALL_NEW",
-    }).promise();
-
-    return (product as unknown as Product).isDeleted;
-  }
 
   async removeProduct(productId: string): Promise<unknown> {
-    return await this.docClient.delete({
+    const product = await this.dynamoDbClient.delete({
       TableName: this.Tablename,
       Key: {
         productId
       }
     }).promise();
+    await this.stockService.removeProductFromStock(productId, Infinity);
+    return product;
   }
 }

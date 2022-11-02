@@ -1,16 +1,17 @@
 import { DocumentClient } from "aws-sdk/clients/dynamodb";
-import { Stock, StockServiceInterface } from './Stock.types';
+import { Stock } from '@models/stock.schema';
+import { StockServiceInterface } from './Stock.types';
 
 export class StockService implements StockServiceInterface {
-  private Tablename: string = 'ProductTable';
-  private docClient: DocumentClient;
+  private Tablename: string = process.env.STOCKS_TABLE_NAME;
+  private dynamoDbClient: DocumentClient;
 
   constructor(client: DocumentClient) {
-    this.docClient = client;
+    this.dynamoDbClient = client;
   }
 
-  async getProductStocks(productId: string): Promise<Stock[]> {
-    const items = await this.docClient.query({
+  async getProductCount(productId: string): Promise<Stock[]> {
+    const items = await this.dynamoDbClient.query({
       TableName: this.Tablename,
       KeyConditionExpression: 'productId = :productId and count > 0',
       ExpressionAttributeValues: {
@@ -21,31 +22,30 @@ export class StockService implements StockServiceInterface {
     return (items.Items as unknown as Stock[]);
   }
 
- async putProductToStock(productId: string, amount: number): Promise<boolean> {
-     await this.docClient.put({
+ async addProductToStore({ productId, count }: Stock): Promise<boolean> {
+     await this.dynamoDbClient.put({
         TableName: this.Tablename,
         Item: {
           productId,
-          count: amount,
+          count,
         }
      }).promise();
 
      return true;
  }
 
- async removeProductInStock(productId: string, amount: number): Promise<boolean> {
-     const stocks = await this.getProductStocks(productId);
+ async removeProductFromStock(productId: string, amount: number): Promise<boolean> {
+     const stocks = await this.getProductCount(productId);
      const count = stocks.reduce((acc, { count }) => count + acc, 0);
-     const isOver = count <= amount;
-     if (isOver) {
-        await this.docClient.delete({
+     if (count <= amount) {
+        await this.dynamoDbClient.delete({
           TableName: this.Tablename,
           Key: {
             productId,
           }
         });
      } else {
-        await this.docClient.update({
+        await this.dynamoDbClient.update({
           TableName: this.Tablename,
           Key: { productId },
           UpdateExpression: "set count = :count",
