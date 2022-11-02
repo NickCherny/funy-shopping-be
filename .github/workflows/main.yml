@@ -1,0 +1,30 @@
+name: Main pipeline
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+jobs:
+  quality_gate:
+    name: quality gate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [ 14.x ]
+    steps:
+      - name: git clone
+        uses: actions/checkout@v2
+      - name: use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: install dependecies
+        run: npm ci --force
+      - name: Types checking
+        run: npx lerna run type:check
+      - name: Check lints
+        run: npx lerna run lint
+      - name: Unit tests
+        run: npx lerna run test
+      - name: Code format
+        run: npx lerna run format

@@ -3,12 +3,32 @@
   "private": true,
   "scripts": {
     "bootstrap": "npx lerna bootstrap",
-    "servicies:graph": "npx nx graph"
+    "servicies:graph": "npx nx graph",
+    "test": "lerna run test",
+    "deploy": "lerna run deploy",
+    "format": "npx prettier --write packages/**/*.ts",
+    "lint": "eslint  --ignore-path .gitignore packages/**/*.ts",
+    "lint:fix": "eslint  --ignore-path .gitignore --fix packages/**/*.ts",
+    "lint:updated": "pipe-git-updated --ext=js -- eslint --ignore-path .gitignore"
   },
   "workspaces": [
     "packages/*"
   ],
   "devDependencies": {
-    "lerna": "^5.6.2"
+    "@serverless/eslint-config": "^5.0.1",
+    "eslint": "^8.25.0",
+    "eslint-plugin-import": "^2.26.0",
+    "lerna": "^5.6.2",
+    "prettier": "^2.7.1"
+  },
+  "eslintConfig": {
+    "extends": "@serverless/eslint-config/node",
+    "root": true,
+    "parserOptions": {
+      "sourceType": "module"
+    },
+    "rules": {
+      "import/prefer-default-export": 0
+    }
   }
 }

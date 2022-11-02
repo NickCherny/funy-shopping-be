@@ -3,5 +3,4 @@ export {
   createProduct,
   getProductList,
   removeProduct,
-  updateProduct,
 } from './product';

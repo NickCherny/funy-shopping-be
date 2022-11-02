@@ -1,70 +1,68 @@
-import { Product } from './Product.types';
-import { createRandomProduct } from '../../../__mocks__/product.properties';
-
-const products = (new Array(10).fill(null).map(createRandomProduct));
+import { v4 } from "uuid";
+import { DocumentClient } from "aws-sdk/clients/dynamodb";
+import { ProductInput, ProductWithCount } from '@models/product.schema';
+import { StockServiceInterface } from '@components/Stock';
 
 export class ProductService {
+  private Tablename: string = process.env.PRODUCTS_TABLE_NAME;
+  private dynamoDbClient: DocumentClient;
+  private stockService: StockServiceInterface;
 
-  // private Tablename: string = "ProductTable";
-
-
-  async getProductList(): Promise<Product[]> {
-    return products
-    // TODO: Return in 4 Task.
-    // const products = await this.docClient.scan({
-    //   TableName: this.Tablename,
-    // }).promise();
-    // return products.Items as ProductSchema[];
+  constructor(client: DocumentClient, stockService: StockServiceInterface) {
+    this.dynamoDbClient = client;
+    this.stockService = stockService;
   }
 
-  async createProduct(product: Product): Promise<Product> {
-    products.push(product);
-    // await this.docClient.put({
-    //   TableName: this.Tablename,
-    //   Item: product
-    // }).promise()
-    return product as Product;
+  async createProduct({ count, ...otherData }: ProductInput): Promise<string> {
+    const productId: string = v4();
+    await this.dynamoDbClient.put({
+      TableName: this.Tablename,
+      Item: {
+        ...otherData,
+        productId,
+      }
+    }).promise();
+    await this.stockService.addProductToStore({ productId, count });
+    return productId;
   }
 
-  async getProductById(id: string): Promise<any> {
-    return (products as unknown as Product[]).find(currentProduct => currentProduct.id === id);
-    // TODO: Return in 4 Task.
-    // const product = await this.docClient.get({
-    //   TableName: this.Tablename,
-    //   Key: {
-    //     todosId: id
-    //   }
-    // }).promise()
-    // if (!product.Item) throw new Error("Id does not exit");
-    //
-    // return product.Item as ProductSchema;
+  async getProductList(): Promise<ProductWithCount[]> {
+    const products = (await this.dynamoDbClient.scan({
+      TableName: this.Tablename,
+    }).promise());
+    const result = await Promise.all(products.Items.map(async product => {
+      const stocks = await this.stockService.getProductCount(product.productId);
+      return {
+        ...product,
+        count: stocks.reduce((acc, { count }) => acc + count, 0),
+      }
+    }));
+    return result as ProductWithCount[];
   }
 
-  // async updateProduct(id: string, data: Partial<ProductSchema>): Promise<ProductSchema> {
-  //   const updated = await this.docClient
-  //     .update({
-  //       TableName: this.Tablename,
-  //       Key: { productId: id },
-  //       UpdateExpression:
-  //         "set #status = :status",
-  //       ExpressionAttributeNames: {
-  //         "#status": "status",
-  //       },
-  //       ExpressionAttributeValues: {
-  //         ":status": true,
-  //       },
-  //       ReturnValues: "ALL_NEW",
-  //     })
-  //     .promise();
-  //   return updated.Attributes as ProductSchema;
-  // }
+  async getProductById(productId: string): Promise<ProductWithCount> {
+    const product = await this.dynamoDbClient.get({
+      TableName: this.Tablename,
+      Key: { productId }
+    }).promise()
+    if (!product.Item) throw new Error("Id does not exit");
+    const stocks = await this.stockService.getProductCount(product.Item.productId);
 
-  // async removeProduct(id: string): Promise<unknown> {
-  //   return await this.docClient.delete({
-  //     TableName: this.Tablename,
-  //     Key: {
-  //       productId: id
-  //     }
-  //   }).promise();
-  // }
+    return {
+      ...product.Item,
+      count: stocks.reduce((acc, { count }) => count + acc, 0)
+    } as ProductWithCount;
+  }
+
+
+  async removeProduct(productId: string): Promise<unknown> {
+    const product = await this.dynamoDbClient.delete({
+      TableName: this.Tablename,
+      Key: {
+        productId
+      }
+    }).promise();
+    await this.stockService.removeProductFromStock(productId, Infinity);
+    return product;
+  }
 }

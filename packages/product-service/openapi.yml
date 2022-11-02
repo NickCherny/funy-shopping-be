@@ -1,0 +1,94 @@
+openapi: 3.0.0
+components:
+  schemas:
+    NotFoundResponse:
+      properties:
+        message:
+          type: string
+          default: Not found
+        status:
+          type: int32
+          default: 404
+    CreateProductRequest:
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          default: 0
+          minimum: 0
+        count:
+          type: int32
+          default: 1
+          minimum: 1
+    ProductResponse:
+      properties:
+        productId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          default: 0
+          minimum: 0
+  securitySchemes: {}
+info:
+  title: product-service
+  description: Product service API
+  version: '1'
+paths:
+  /products/:
+    get:
+      operationId: getProductList
+      summary: Get list of products
+      description: Return whole list of available products
+      responses:
+        '200':
+          description: Get all products
+          content: {}
+  '/product/{productId}':
+    delete:
+      operationId: removeProduct
+      summary: Delete current product
+      description: Take product id and if product exist delete it
+      responses:
+        '200':
+          description: Return deleted product
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+  /product:
+    post:
+      operationId: createProduct
+      summary: Create product
+      description: 'Take product input, put it in db and return result productId'
+      responses:
+        '200':
+          description: Return product id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+  '/product/{id}':
+    get:
+      operationId: getProductById
+      summary: Get product by product ID
+      description: Provide productId as a path params
+      responses:
+        '200':
+          description: Found product
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
